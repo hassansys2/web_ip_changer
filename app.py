@@ -76,13 +76,15 @@ def change_ip():
                 return jsonify({'error': 'Missing required parameters for static IP'}), 400
 
             iface_config['addresses'] = [f"{ip_address}/{netmask}"]
-            iface_config['gateway4'] = gateway
+            # iface_config.pop('gateway4', None)  # Remove deprecated 'gateway4'
+            iface_config['routes'] = [{'to': '0.0.0.0/0', 'via': gateway}]
             iface_config['dhcp4'] = False
 
         elif ip_option == 'dhcp':
             iface_config['dhcp4'] = True
             iface_config.pop('addresses', None)
-            iface_config.pop('gateway4', None)
+            # iface_config.pop('gateway4', None)  # Remove deprecated 'gateway4'
+            iface_config.pop('routes', None)
         else:
             return jsonify({'error': 'Invalid IP option'}), 400
 

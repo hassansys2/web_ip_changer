@@ -1,0 +1,3 @@
+sudo apt install network-manager python3-gi python3-pip
+
+pip install flask-cors flask
