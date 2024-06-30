@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <title>Change IP Address</title>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Change IP Address</h1>
+        <form id="ipForm" class="needs-validation" novalidate>
+            <div class="form-group">
+                <label for="interface">Interface</label>
+                <select class="form-control" id="interface" name="interface" required></select>
+                <div class="invalid-feedback">Please select a network interface.</div>
+            </div>
+            <div class="form-group">
+                <label for="ip_option">IP Address Option</label>
+                <select class="form-control" id="ip_option" name="ip_option" required>
+                    <option value="static">Static</option>
+                    <option value="dhcp">Obtain automatically (DHCP)</option>
+                </select>
+                <div class="invalid-feedback">Please select an IP address option.</div>
+            </div>
+            <div id="static_ip_fields">
+                <div class="form-group">
+                    <label for="ip_address">IP Address</label>
+                    <input type="text" class="form-control" id="ip_address" name="ip_address" required>
+                    <div class="invalid-feedback">Please enter an IP address.</div>
+                </div>
+                <div class="form-group">
+                    <label for="netmask">Netmask</label>
+                    <input type="text" class="form-control" id="netmask" name="netmask" required>
+                    <div class="invalid-feedback">Please enter a netmask.</div>
+                </div>
+                <div class="form-group">
+                    <label for="gateway">Gateway</label>
+                    <input type="text" class="form-control" id="gateway" name="gateway" required>
+                    <div class="invalid-feedback">Please enter a gateway.</div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Change IP</button>
+        </form>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const interfaceSelect = document.getElementById('interface');
+            const ipOption = document.getElementById('ip_option');
+            const staticIpFields = document.getElementById('static_ip_fields');
+
+            // Fetch network interfaces
+            fetch('http://localhost:5000/interfaces')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.interfaces) {
+                        data.interfaces.forEach(iface => {
+                            const option = document.createElement('option');
+                            option.value = iface;
+                            option.textContent = iface;
+                            interfaceSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error fetching interfaces:', error));
+
+            ipOption.addEventListener('change', function () {
+                if (this.value === 'dhcp') {
+                    staticIpFields.style.display = 'none';
+                } else {
+                    staticIpFields.style.display = 'block';
+                }
+            });
+
+            document.getElementById('ipForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                const data = {
+                    interface: interfaceSelect.value,
+                    ip_option: ipOption.value,
+                };
+
+                if (data.ip_option === 'static') {
+                    data.ip_address = document.getElementById('ip_address').value;
+                    data.netmask = document.getElementById('netmask').value;
+                    data.gateway = document.getElementById('gateway').value;
+                }
+
+                fetch('http://localhost:5000/change_ip', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(`Error: ${data.error}`);
+                    } else {
+                        alert('IP address changed successfully');
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+            });
+
+            // Trigger change event on page load to set initial state
+            ipOption.dispatchEvent(new Event('change'));
+        });
+    </script>
+</body>
+</html>
