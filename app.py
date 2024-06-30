@@ -9,41 +9,38 @@ CORS(app)
 
 NETPLAN_CONFIG_PATH = '/etc/netplan/01-netcfg.yaml'
 
+def get_network_interfaces():
+    interfaces = {}
+    try:
+        if os.path.exists(NETPLAN_CONFIG_PATH):
+            with open(NETPLAN_CONFIG_PATH, 'r') as file:
+                netplan_config = yaml.safe_load(file)
+                for iface, config in netplan_config.get('network', {}).get('ethernets', {}).items():
+                    ip_address = None
+                    if 'addresses' in config:
+                        ip_address = config['addresses'][0].split('/')[0]
+                    interfaces[iface] = {'ip_address': ip_address}
+
+        return interfaces
+
+    except FileNotFoundError as e:
+        print(f"Netplan configuration file not found: {str(e)}")
+    except yaml.YAMLError as e:
+        print(f"Error parsing Netplan configuration: {str(e)}")
+    except Exception as e:
+        print(f"Error fetching network interfaces: {str(e)}")
+    return interfaces
+
 @app.route('/')
 def serve_index():
     return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/interfaces', methods=['GET'])
-def get_interfaces():
-    try:
-        interfaces = {}
-        ip_result = subprocess.run(['ip', '-o', '-4', 'addr', 'show'], stdout=subprocess.PIPE, check=True)
-        for line in ip_result.stdout.decode('utf-8').split('\n'):
-            if line:
-                parts = line.split()
-                interface = parts[1]
-                if interface != 'lo':  # Exclude loopback interface
-                    ip_address = parts[3].split('/')[0]
-                    interfaces[interface] = {'ip_address': ip_address}
-
-        if os.path.exists(NETPLAN_CONFIG_PATH):
-            with open(NETPLAN_CONFIG_PATH, 'r') as file:
-                netplan_config = yaml.safe_load(file)
-                for iface, config in netplan_config.get('network', {}).get('ethernets', {}).items():
-                    if iface in interfaces:
-                        if config.get('dhcp4'):
-                            interfaces[iface]['method'] = 'dhcp'
-                        else:
-                            interfaces[iface]['method'] = 'manual'
-                            interfaces[iface]['gateway'] = config.get('gateway4')
-                            interfaces[iface]['netmask'] = None  # netmask could be parsed from IP address if needed
-        return jsonify({'interfaces': interfaces}), 200
-    except subprocess.CalledProcessError as e:
-        return jsonify({'error': f"Subprocess error: {str(e)}"}), 500
-    except FileNotFoundError as e:
-        return jsonify({'error': f"File not found: {str(e)}"}), 500
-    except Exception as e:
-        return jsonify({'error': f"General error: {str(e)}"}), 500
+def interfaces():
+    interfaces = get_network_interfaces()
+    if not interfaces:
+        return jsonify({'error': 'Failed to fetch network interfaces'}), 500
+    return jsonify({'interfaces': interfaces}), 200
 
 @app.route('/change_ip', methods=['POST'])
 def change_ip():
