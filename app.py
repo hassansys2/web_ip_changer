@@ -12,13 +12,27 @@ def serve_index():
 @app.route('/interfaces', methods=['GET'])
 def get_interfaces():
     try:
-        result = subprocess.run(['nmcli', 'device', 'status'], stdout=subprocess.PIPE)
-        interfaces = []
-        for line in result.stdout.decode('utf-8').split('\n'):
+        interfaces = {}
+        # Get IP addresses
+        ip_result = subprocess.run(['ip', '-o', '-4', 'addr', 'show'], stdout=subprocess.PIPE)
+        for line in ip_result.stdout.decode('utf-8').split('\n'):
             if line:
                 parts = line.split()
-                if parts and parts[1] == 'ethernet':
-                    interfaces.append(parts[0])
+                interface = parts[1]
+                ip_address = parts[3].split('/')[0]
+                interfaces[interface] = {'ip_address': ip_address}
+
+        # Get connection methods (DHCP or static)
+        nmcli_result = subprocess.run(['nmcli', '-t', '-f', 'DEVICE,IP4,IP4.ADDRESS,IP4.GATEWAY,IP4.METHOD', 'device', 'show'], stdout=subprocess.PIPE)
+        for line in nmcli_result.stdout.decode('utf-8').split('\n'):
+            if line:
+                parts = line.split(':')
+                if parts[0] in interfaces:
+                    interfaces[parts[0]].update({
+                        'method': parts[4],
+                        'gateway': parts[3] if parts[4] == 'manual' else None,
+                        'netmask': None  # netmask could be parsed from IP address if needed
+                    })
         return jsonify({'interfaces': interfaces}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -41,13 +55,15 @@ def change_ip():
             if not ip_address or not netmask or not gateway:
                 return jsonify({'error': 'Missing required parameters for static IP'}), 400
 
-            subprocess.run(['nmcli', 'con', 'add', 'type', 'ethernet', 'con-name', 'static-ip', 'ifname', interface,
-                            'ip4', f'{ip_address}/{netmask}', 'gw4', gateway], check=True)
-            subprocess.run(['nmcli', 'con', 'up', 'static-ip'], check=True)
+            command_ip = f"sudo ifconfig {interface} {ip_address} netmask {netmask}"
+            command_gw = f"sudo route add default gw {gateway} {interface}"
+            
+            subprocess.run(command_ip.split(), check=True)
+            subprocess.run(command_gw.split(), check=True)
 
         elif ip_option == 'dhcp':
-            subprocess.run(['nmcli', 'con', 'mod', interface, 'ipv4.method', 'auto'], check=True)
-            subprocess.run(['nmcli', 'con', 'up', interface], check=True)
+            command_dhcp = f"sudo dhclient {interface}"
+            subprocess.run(command_dhcp.split(), check=True)
         else:
             return jsonify({'error': 'Invalid IP option'}), 400
 
