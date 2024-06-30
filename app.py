@@ -19,8 +19,9 @@ def get_interfaces():
             if line:
                 parts = line.split()
                 interface = parts[1]
-                ip_address = parts[3].split('/')[0]
-                interfaces[interface] = {'ip_address': ip_address}
+                if interface != 'lo':  # Exclude loopback interface
+                    ip_address = parts[3].split('/')[0]
+                    interfaces[interface] = {'ip_address': ip_address}
 
         # Get connection methods (DHCP or static)
         nmcli_result = subprocess.run(['nmcli', '-t', '-f', 'DEVICE,IP4,IP4.ADDRESS,IP4.GATEWAY,IP4.METHOD', 'device', 'show'], stdout=subprocess.PIPE)
