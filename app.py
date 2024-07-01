@@ -3,6 +3,7 @@ from flask_cors import CORS
 import subprocess
 import yaml
 import os
+import re
 
 app = Flask(__name__, static_url_path='', static_folder='static')
 CORS(app)
@@ -13,19 +14,42 @@ INTERFACE = 'eth0'
 def get_network_interface():
     interface = {}
     try:
+        result = subprocess.run(['ip', 'addr', 'show', INTERFACE], capture_output=True, text=True, check=True)
+        output = result.stdout
+        ip_address, netmask, gateway = None, None, None
+        
+        # Extract IP address and netmask
+        ip_match = re.search(r'inet (\d+\.\d+\.\d+\.\d+)/(\d+)', output)
+        if ip_match:
+            ip_address = ip_match.group(1)
+            netmask = ip_match.group(2)
+
+        # Extract gateway
+        route_result = subprocess.run(['ip', 'route', 'show', 'default', 'dev', INTERFACE], capture_output=True, text=True, check=True)
+        route_output = route_result.stdout
+        gateway_match = re.search(r'default via (\d+\.\d+\.\d+\.\d+)', route_output)
+        if gateway_match:
+            gateway = gateway_match.group(1)
+        
+        # Check if DHCP is enabled
+        dhcp = False
         if os.path.exists(NETPLAN_CONFIG_PATH):
             with open(NETPLAN_CONFIG_PATH, 'r') as file:
                 netplan_config = yaml.safe_load(file)
                 config = netplan_config.get('network', {}).get('ethernets', {}).get(INTERFACE, {})
-                ip_address = None
-                if 'addresses' in config:
-                    ip_address = config['addresses'][0].split('/')[0]
-                interface = {'ip_address': ip_address}
+                dhcp = config.get('dhcp4', False)
+
+        interface = {
+            'ip_address': ip_address,
+            'netmask': netmask,
+            'gateway': gateway,
+            'dhcp': dhcp
+        }
 
         return interface
 
-    except FileNotFoundError as e:
-        print(f"Netplan configuration file not found: {str(e)}")
+    except subprocess.CalledProcessError as e:
+        print(f"Subprocess error: {str(e)}")
     except yaml.YAMLError as e:
         print(f"Error parsing Netplan configuration: {str(e)}")
     except Exception as e:
