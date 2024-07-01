@@ -1,4 +1,16 @@
-sudo apt install network-manager python3-gi python3-pip
+sudo apt install network-manager python3-gi python3-pip chrony
+
+
+sudo timedatectl set-time '2024-07-2 15:00:12'
+sudo timedatectl 
+
+sudo timedatectl set-timezone Asia/Karachi
+sudo timedatectl set-ntp false
+
+
+
+
+
 
 pip install flask-cors flask
 

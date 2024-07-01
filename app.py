@@ -145,9 +145,9 @@ def change_time():
         
         elif time_option == 'ntp':
             ntp_server = data.get('ntp_server', 'pool.ntp.org')
-            subprocess.run(['sudo', 'timedatectl', 'set-ntp', 'false'], check=True)
-            subprocess.run(['sudo', 'ntpdate', ntp_server], check=True)
             subprocess.run(['sudo', 'timedatectl', 'set-ntp', 'true'], check=True)
+            # subprocess.run(['sudo', 'timedatectl', 'set-timezone', '<your_timezone>'], check=True)  # Replace <your_timezone> with your actual timezone
+            # subprocess.run(['sudo', 'systemctl', 'restart', 'systemd-timesyncd'], check=True)  # Use systemd-timesyncd for time synchronization
         
         else:
             return jsonify({'error': 'Invalid time option'}), 400
