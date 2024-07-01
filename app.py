@@ -1,12 +1,16 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import subprocess
+import logging
 import yaml
 import os
 import re
 
 app = Flask(__name__, static_url_path='', static_folder='static')
 CORS(app)
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 NETPLAN_CONFIG_PATH = '/etc/netplan/01-netcfg.yaml'
 INTERFACE = 'eth0'
@@ -144,10 +148,14 @@ def change_time():
             subprocess.run(['sudo', 'timedatectl', 'set-time', f"{date} {time}"], check=True)
         
         elif time_option == 'ntp':
-            ntp_server = data.get('ntp_server', 'pool.ntp.org')
+            # ntp_server = data.get('ntp_server', 'pool.ntp.org')
+            timezone = data.get('timezone')
+            if not timezone:
+                return jsonify({'error': 'Missing required parameters for NTP setting'}), 400
+
             subprocess.run(['sudo', 'timedatectl', 'set-ntp', 'true'], check=True)
-            # subprocess.run(['sudo', 'timedatectl', 'set-timezone', '<your_timezone>'], check=True)  # Replace <your_timezone> with your actual timezone
-            # subprocess.run(['sudo', 'systemctl', 'restart', 'systemd-timesyncd'], check=True)  # Use systemd-timesyncd for time synchronization
+            subprocess.run(['sudo', 'timedatectl', 'set-timezone', timezone], check=True)
+            subprocess.run(['sudo', 'systemctl', 'restart', 'systemd-timesyncd'], check=True)
         
         else:
             return jsonify({'error': 'Invalid time option'}), 400
@@ -158,6 +166,15 @@ def change_time():
         return jsonify({'error': f"Subprocess error: {str(e)}"}), 500
     except Exception as e:
         return jsonify({'error': f"General error: {str(e)}"}), 500
+
+@app.route('/list_timezones', methods=['GET'])
+def list_timezones():
+    try:
+        result = subprocess.run(['timedatectl', 'list-timezones'], capture_output=True, text=True, check=True)
+        timezones = result.stdout.splitlines()
+        return jsonify({'timezones': timezones}), 200
+    except subprocess.CalledProcessError as e:
+        return jsonify({'error': f"Subprocess error: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
