@@ -8,47 +8,47 @@ app = Flask(__name__, static_url_path='', static_folder='static')
 CORS(app)
 
 NETPLAN_CONFIG_PATH = '/etc/netplan/01-netcfg.yaml'
+INTERFACE = 'eth0'
 
-def get_network_interfaces():
-    interfaces = {}
+def get_network_interface():
+    interface = {}
     try:
         if os.path.exists(NETPLAN_CONFIG_PATH):
             with open(NETPLAN_CONFIG_PATH, 'r') as file:
                 netplan_config = yaml.safe_load(file)
-                for iface, config in netplan_config.get('network', {}).get('ethernets', {}).items():
-                    ip_address = None
-                    if 'addresses' in config:
-                        ip_address = config['addresses'][0].split('/')[0]
-                    interfaces[iface] = {'ip_address': ip_address}
+                config = netplan_config.get('network', {}).get('ethernets', {}).get(INTERFACE, {})
+                ip_address = None
+                if 'addresses' in config:
+                    ip_address = config['addresses'][0].split('/')[0]
+                interface = {'ip_address': ip_address}
 
-        return interfaces
+        return interface
 
     except FileNotFoundError as e:
         print(f"Netplan configuration file not found: {str(e)}")
     except yaml.YAMLError as e:
         print(f"Error parsing Netplan configuration: {str(e)}")
     except Exception as e:
-        print(f"Error fetching network interfaces: {str(e)}")
-    return interfaces
+        print(f"Error fetching network interface: {str(e)}")
+    return interface
 
 @app.route('/')
 def serve_index():
     return send_from_directory(app.static_folder, 'index.html')
 
-@app.route('/interfaces', methods=['GET'])
-def interfaces():
-    interfaces = get_network_interfaces()
-    if not interfaces:
-        return jsonify({'error': 'Failed to fetch network interfaces'}), 500
-    return jsonify({'interfaces': interfaces}), 200
+@app.route('/interface', methods=['GET'])
+def interface():
+    interface = get_network_interface()
+    if not interface:
+        return jsonify({'error': 'Failed to fetch network interface'}), 500
+    return jsonify({'interface': interface}), 200
 
 @app.route('/change_ip', methods=['POST'])
 def change_ip():
     data = request.json
-    interface = data.get('interface')
     ip_option = data.get('ip_option')
 
-    if not interface or not ip_option:
+    if not ip_option:
         return jsonify({'error': 'Missing required parameters'}), 400
 
     try:
@@ -62,10 +62,10 @@ def change_ip():
             netplan_config['network'] = {}
         if 'ethernets' not in netplan_config['network']:
             netplan_config['network']['ethernets'] = {}
-        if interface not in netplan_config['network']['ethernets']:
-            netplan_config['network']['ethernets'][interface] = {}
+        if INTERFACE not in netplan_config['network']['ethernets']:
+            netplan_config['network']['ethernets'][INTERFACE] = {}
 
-        iface_config = netplan_config['network']['ethernets'][interface]
+        iface_config = netplan_config['network']['ethernets'][INTERFACE]
 
         if ip_option == 'static':
             ip_address = data.get('ip_address')
@@ -76,14 +76,12 @@ def change_ip():
                 return jsonify({'error': 'Missing required parameters for static IP'}), 400
 
             iface_config['addresses'] = [f"{ip_address}/{netmask}"]
-            # iface_config.pop('gateway4', None)  # Remove deprecated 'gateway4'
             iface_config['routes'] = [{'to': '0.0.0.0/0', 'via': gateway}]
             iface_config['dhcp4'] = False
 
         elif ip_option == 'dhcp':
             iface_config['dhcp4'] = True
             iface_config.pop('addresses', None)
-            # iface_config.pop('gateway4', None)  # Remove deprecated 'gateway4'
             iface_config.pop('routes', None)
         else:
             return jsonify({'error': 'Invalid IP option'}), 400

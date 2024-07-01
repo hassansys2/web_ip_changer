@@ -11,10 +11,6 @@
     <h1 class="mb-4">Network Configuration</h1>
     <form id="ipForm">
         <div class="form-group">
-            <label for="interface">Select Interface:</label>
-            <select id="interface" class="form-control" required></select>
-        </div>
-        <div class="form-group">
             <label for="ipOption">IP Configuration:</label>
             <select id="ipOption" class="form-control" required>
                 <option value="static">Static IP</option>
@@ -28,7 +24,7 @@
             </div>
             <div class="form-group">
                 <label for="netmask">Subnet Mask:</label>
-                <input type="text" placeholder="/24" id="netmask" class="form-control" pattern="^(\([1-9]|[1-2][0-9]|3[0-2]))?$" title="Enter a valid subnet mask (e.g., /24)">
+                <input type="text" placeholder="/24" id="netmask" class="form-control" pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$" title="Enter a valid subnet mask (e.g., /24)">
             </div>
             <div class="form-group">
                 <label for="gateway">Gateway:</label>
@@ -37,39 +33,16 @@
         </div>
         <button type="submit" class="btn btn-primary">Apply</button>
     </form>
-    <!--
-    <div id="currentIp" class="mt-4">
-        <h3>Current IP Addresses:</h3>
-        <ul id="interfaceList" class="list-group"></ul>
-    </div>
-    -->
-
 </div>
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
     $(document).ready(function() {
-        // Fetch interfaces and current IP addresses
-        $.getJSON('/interfaces', function(data) {
-            var interfaceSelect = $('#interface');
-            var interfaceList = $('#interfaceList');
-            interfaceSelect.empty();
-            interfaceList.empty();
-            $.each(data.interfaces, function(interface, details) {
-                interfaceSelect.append($('<option>', { value: interface, text: interface }));
-                interfaceList.append($('<li>', { class: 'list-group-item', text: interface + ': ' + details.ip_address + ' (' + details.method + ')' }));
-
-                // Set the initial values based on the current configuration
-                if (interfaceSelect.val() === interface) {
-                    if (details.method === 'manual') {
-                        $('#ipOption').val('static');
-                        $('#ipAddress').val(details.ip_address);
-                        $('#netmask').val(details.netmask);
-                        $('#gateway').val(details.gateway);
-                    } else {
-                        $('#ipOption').val('dhcp');
-                    }
-                }
-            });
+        // Fetch current IP addresses
+        $.getJSON('/interface', function(data) {
+            var details = data.interface;
+            if (details.ip_address) {
+                $('#ipAddress').val(details.ip_address);
+            }
 
             // Show/Hide static IP configuration fields and toggle validation
             $('#ipOption').change(function() {
@@ -97,9 +70,7 @@
                 return;
             }
 
-            var interface = $('#interface').val();
             var data = {
-                interface: interface,
                 ip_option: ipOption
             };
             if (ipOption === 'static') {
@@ -118,30 +89,6 @@
                 },
                 error: function(response) {
                     alert('Error: ' + response.responseJSON.error);
-                }
-            });
-        });
-
-        // Update form fields when a different interface is selected
-        $('#interface').change(function() {
-            var selectedInterface = $(this).val();
-            $.getJSON('/interfaces', function(data) {
-                var details = data.interfaces[selectedInterface];
-                if (details.method === 'manual') {
-                    $('#ipOption').val('static');
-                    $('#ipAddress').val(details.ip_address);
-                    $('#netmask').val(details.netmask);
-                    $('#gateway').val(details.gateway);
-                    $('#staticConfig').show();
-                    $('#ipAddress').attr('required', true);
-                    $('#netmask').attr('required', true);
-                    $('#gateway').attr('required', true);
-                } else {
-                    $('#ipOption').val('dhcp');
-                    $('#staticConfig').hide();
-                    $('#ipAddress').attr('required', false);
-                    $('#netmask').attr('required', false);
-                    $('#gateway').attr('required', false);
                 }
             });
         });
