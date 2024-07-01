@@ -126,5 +126,38 @@ def change_ip():
     except Exception as e:
         return jsonify({'error': f"General error: {str(e)}"}), 500
 
+@app.route('/change_time', methods=['POST'])
+def change_time():
+    data = request.json
+    time_option = data.get('time_option')
+
+    if not time_option:
+        return jsonify({'error': 'Missing required parameters'}), 400
+
+    try:
+        if time_option == 'manual':
+            date = data.get('date')
+            time = data.get('time')
+            if not date or not time:
+                return jsonify({'error': 'Missing required parameters for manual time setting'}), 400
+
+            subprocess.run(['sudo', 'timedatectl', 'set-time', f"{date} {time}"], check=True)
+        
+        elif time_option == 'ntp':
+            ntp_server = data.get('ntp_server', 'pool.ntp.org')
+            subprocess.run(['sudo', 'timedatectl', 'set-ntp', 'false'], check=True)
+            subprocess.run(['sudo', 'ntpdate', ntp_server], check=True)
+            subprocess.run(['sudo', 'timedatectl', 'set-ntp', 'true'], check=True)
+        
+        else:
+            return jsonify({'error': 'Invalid time option'}), 400
+
+        return jsonify({'status': 'Time configuration changed successfully'}), 200
+
+    except subprocess.CalledProcessError as e:
+        return jsonify({'error': f"Subprocess error: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({'error': f"General error: {str(e)}"}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
