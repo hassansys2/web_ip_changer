@@ -242,20 +242,23 @@ def change_time():
         if time_option == 'manual':
             date = data.get('date')
             time = data.get('time')
-            if not date or not time:
+            timezone = data.get('timezone')
+            if not date or not time or not timezone:
                 return jsonify({'error': 'Missing required parameters for manual time setting'}), 400
             
             subprocess.run(['sudo', 'timedatectl', 'set-ntp', 'false'], check=True)
             subprocess.run(['sudo', 'timedatectl', 'set-time', f"{date} {time}"], check=True)
+            subprocess.run(['sudo', 'timedatectl', 'set-timezone', timezone], check=True)
         
         elif time_option == 'ntp':
-            # ntp_server = data.get('ntp_server', 'pool.ntp.org')
+            ntp_server = data.get('ntp_server', 'pool.ntp.org')
             timezone = data.get('timezone')
             if not timezone:
                 return jsonify({'error': 'Missing required parameters for NTP setting'}), 400
 
             subprocess.run(['sudo', 'timedatectl', 'set-ntp', 'true'], check=True)
             subprocess.run(['sudo', 'timedatectl', 'set-timezone', timezone], check=True)
+            subprocess.run(['sudo', 'bash', '-c', f"echo 'NTP={ntp_server}' >> /etc/systemd/timesyncd.conf"], check=True)
             subprocess.run(['sudo', 'systemctl', 'restart', 'systemd-timesyncd'], check=True)
         
         else:

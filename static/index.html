@@ -74,6 +74,10 @@
         <div class="tab-pane fade" id="time" role="tabpanel" aria-labelledby="time-tab">
             <form id="timeForm" class="mt-4">
                 <div class="form-group">
+                    <label for="timezone">Timezone:</label>
+                    <select id="timezone" class="form-control" required></select>
+                </div>
+                <div class="form-group">
                     <label for="timeOption">Time Configuration:</label>
                     <select id="timeOption" class="form-control" required>
                         <option value="manual">Manual</option>
@@ -92,14 +96,8 @@
                 </div>
                 <div id="ntpConfig">
                     <div class="form-group">
-                        <!--
                         <label for="ntpServer">NTP Server:</label>
                         <input type="text" id="ntpServer" placeholder="pool.ntp.org" class="form-control">
-                        -->
-                    </div>
-                    <div class="form-group">
-                        <label for="timezone">Timezone:</label>
-                        <select id="timezone" class="form-control" required></select>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary">Apply</button>
@@ -192,14 +190,14 @@
                 $('#ntpConfig').hide();
                 $('#date').attr('required', true);
                 $('#set_time').attr('required', true);
-                //$('#ntpServer').attr('required', false);
-                $('#timezone').attr('required', false);
+                $('#ntpServer').attr('required', false);
+                $('#timezone').attr('required', true);
             } else {
                 $('#manualTimeConfig').hide();
                 $('#ntpConfig').show();
                 $('#date').attr('required', false);
                 $('#set_time').attr('required', false);
-                //$('#ntpServer').attr('required', true);
+                $('#ntpServer').attr('required', true);
                 $('#timezone').attr('required', true);
             }
         }).trigger('change');
@@ -212,13 +210,14 @@
             var data = {
                 time_option: timeOption
             };
+            
+            data.timezone = $('#timezone').val();
+            
             if (timeOption === 'manual') {
                 data.date = $('#date').val();
                 data.time = $('#set_time').val();
-                
             } else {
-                //data.ntp_server = $('#ntpServer').val();
-                data.timezone = $('#timezone').val();
+                data.ntp_server = $('#ntpServer').val();
             }
 
             console.log(data);
