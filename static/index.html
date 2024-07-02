@@ -32,6 +32,7 @@
     <div class="header">
         <h1 class="mb-4">Network and Time Configuration</h1>
         <button id="logoutButton" class="btn btn-danger">Logout</button>
+        <button id="changePasswordButton" class="btn btn-primary">Change Password</button>
     </div>
     <ul class="nav nav-tabs" id="configTabs" role="tablist">
         <li class="nav-item">
@@ -237,6 +238,11 @@
             });
         });
 
+        $('#changePasswordButton').click(function() {
+                window.location.href = '/change_password.html';
+            });
+
+            
         $('#logoutButton').click(function() {
                 $.ajax({
                     url: '/logout',
