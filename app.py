@@ -1,13 +1,27 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, redirect, url_for, session
 from flask_cors import CORS
 import subprocess
 import logging
 import yaml
 import os
 import re
+from functools import wraps
 
 app = Flask(__name__, static_url_path='', static_folder='static')
 CORS(app)
+app.secret_key = 'your_secret_key'  # Replace with your own secret key
+# Dummy user credentials
+USERNAME = 'admin'
+PASSWORD = 'password'
+
+# Function to check if the user is logged in
+def login_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if 'logged_in' not in session:
+            return redirect(url_for('login_page'))
+        return f(*args, **kwargs)
+    return wrapper
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -60,9 +74,32 @@ def get_network_interface():
         print(f"Error fetching network interface: {str(e)}")
     return interface
 
+
 @app.route('/')
+@login_required
 def serve_index():
     return send_from_directory(app.static_folder, 'index.html')
+
+@app.route('/login', methods=['GET'])
+def login_page():
+    return send_from_directory(app.static_folder, 'login.html')
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    
+    if username == USERNAME and password == PASSWORD:
+        session['logged_in'] = True
+        return jsonify({'status': 'Logged in successfully'}), 200
+    return jsonify({'error': 'Invalid username or password'}), 401
+
+@app.route('/logout', methods=['GET'])
+@login_required
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('login_page'))
 
 @app.route('/interface', methods=['GET'])
 def interface():
