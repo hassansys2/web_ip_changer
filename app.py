@@ -256,7 +256,7 @@ def change_time():
 
             subprocess.run(['sudo', 'timedatectl', 'set-ntp', 'true'], check=True)
             subprocess.run(['sudo', 'timedatectl', 'set-timezone', timezone], check=True)
-            #subprocess.run(['sudo', 'systemctl', 'restart', 'systemd-timesyncd'], check=True)
+            subprocess.run(['sudo', 'systemctl', 'restart', 'systemd-timesyncd'], check=True)
         
         else:
             return jsonify({'error': 'Invalid time option'}), 400
