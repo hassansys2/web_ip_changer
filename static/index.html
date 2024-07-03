@@ -62,8 +62,8 @@
                         <input type="date" id="date" class="form-control" required>
                     </div>
                     <div class="form-group">
-                        <label for="time">Time:</label>
-                        <input type="time" id="time" class="form-control" required>
+                        <label for="set_time">Time:</label>
+                        <input type="time" id="set_time" class="form-control" required>
                     </div>
                 </div>
                 <div id="ntpConfig">
@@ -167,14 +167,14 @@
                 $('#manualTimeConfig').show();
                 $('#ntpConfig').hide();
                 $('#date').attr('required', true);
-                $('#time').attr('required', true);
+                $('#set_time').attr('required', true);
                 //$('#ntpServer').attr('required', false);
                 $('#timezone').attr('required', false);
             } else {
                 $('#manualTimeConfig').hide();
                 $('#ntpConfig').show();
                 $('#date').attr('required', false);
-                $('#time').attr('required', false);
+                $('#set_time').attr('required', false);
                 //$('#ntpServer').attr('required', true);
                 $('#timezone').attr('required', true);
             }
@@ -190,12 +190,15 @@
             };
             if (timeOption === 'manual') {
                 data.date = $('#date').val();
-                data.time = $('#time').val();
+                data.time = $('#set_time').val();
                 
             } else {
                 //data.ntp_server = $('#ntpServer').val();
                 data.timezone = $('#timezone').val();
             }
+
+            console.log(data);
+
             $.ajax({
                 url: '/change_time',
                 type: 'POST',

@@ -144,7 +144,8 @@ def change_time():
             time = data.get('time')
             if not date or not time:
                 return jsonify({'error': 'Missing required parameters for manual time setting'}), 400
-
+            
+            subprocess.run(['sudo', 'timedatectl', 'set-ntp', 'false'], check=True)
             subprocess.run(['sudo', 'timedatectl', 'set-time', f"{date} {time}"], check=True)
         
         elif time_option == 'ntp':
@@ -155,7 +156,7 @@ def change_time():
 
             subprocess.run(['sudo', 'timedatectl', 'set-ntp', 'true'], check=True)
             subprocess.run(['sudo', 'timedatectl', 'set-timezone', timezone], check=True)
-            subprocess.run(['sudo', 'systemctl', 'restart', 'systemd-timesyncd'], check=True)
+            #subprocess.run(['sudo', 'systemctl', 'restart', 'systemd-timesyncd'], check=True)
         
         else:
             return jsonify({'error': 'Invalid time option'}), 400
