@@ -5,13 +5,56 @@ import logging
 import yaml
 import os
 import re
+import json
 from functools import wraps
 from datetime import datetime, timedelta, timezone
 
 app = Flask(__name__, static_url_path='', static_folder='static')
 CORS(app)
 app.secret_key = 'your_secret_key'  # Replace with your own secret key
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=20)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=60)
+
+# Path to the JSON file storing passwords
+PASSWORD_FILE = 'users.json'
+
+# Function to load user data from JSON file
+def load_users():
+    if os.path.exists(PASSWORD_FILE):
+        with open(PASSWORD_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+# Function to save user data to JSON file
+def save_users(users_data):
+    with open(PASSWORD_FILE, 'w') as f:
+        json.dump(users_data, f, indent=4)
+
+# Dummy user data (replace with your actual user authentication logic)
+users = load_users()
+
+
+@app.route('/change_password', methods=['POST'])
+def change_password():
+    data = request.json
+    current_password = data.get('current_password')
+    new_password = data.get('new_password')
+
+    if not current_password or not new_password:
+        return jsonify({'error': 'Missing required parameters'}), 400
+
+    # Replace this with your actual authentication logic
+    if 'username' not in session or session['username'] not in users:
+        return jsonify({'error': 'User not authenticated or does not exist'}), 401
+
+    username = session['username']
+    if users[username]['password'] != current_password:
+        return jsonify({'error': 'Current password is incorrect'}), 401
+
+    users[username]['password'] = new_password  # Update password in memory
+
+    save_users(users)  # Save updated user data to file
+
+    return jsonify({'status': 'Password changed successfully'}), 200
 
 def session_expired():
     return 'last_activity' not in session or \
@@ -101,26 +144,24 @@ def index():
 
 @app.route('/login', methods=['POST'])
 def login():
-    if 'logged_in' in session:
-        return redirect(url_for('index'))
-
     data = request.json
     username = data.get('username')
     password = data.get('password')
-    
-    if username == USERNAME and password == PASSWORD:
-        session.permanent = True
-        session['logged_in'] = True
-        session['last_activity'] = datetime.now(timezone.utc)
-        return redirect(url_for('index'))
-        
-        return jsonify({'status': 'Logged in successfully'}), 200
-    return jsonify({'error': 'Invalid username or password'}), 401
 
-@app.route('/logout', methods=['GET'])
+    if not username or not password:
+        return jsonify({'error': 'Missing username or password'}), 400
+
+    if username in users and users[username]['password'] == password:
+        session['username'] = username
+        return jsonify({'status': 'Login successful'}), 200
+    else:
+        return jsonify({'error': 'Invalid username or password'}), 401
+
+@app.route('/logout', methods=['GET', 'POST'])
 @login_required
 def logout():
     session.pop('logged_in', None)
+    session.pop('username', None)
     return redirect(url_for('login_page'))
 
 @app.route('/interface', methods=['GET'])
