@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory, redirect, url_for, session
+from flask import Flask, request, jsonify, send_from_directory, redirect, url_for, session, render_template
 from flask_cors import CORS
 import subprocess
 import logging
@@ -6,10 +6,26 @@ import yaml
 import os
 import re
 from functools import wraps
+from datetime import datetime, timedelta, timezone
 
 app = Flask(__name__, static_url_path='', static_folder='static')
 CORS(app)
 app.secret_key = 'your_secret_key'  # Replace with your own secret key
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=20)
+
+def session_expired():
+    return 'last_activity' not in session or \
+           (datetime.now(timezone.utc) - session['last_activity']) > app.config['PERMANENT_SESSION_LIFETIME']
+
+def session_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session_expired():
+            return redirect(url_for('login'))
+        session['last_activity'] = datetime.now(timezone.utc)
+        return f(*args, **kwargs)
+    return decorated_function
+
 # Dummy user credentials
 USERNAME = 'admin'
 PASSWORD = 'password'
@@ -74,24 +90,30 @@ def get_network_interface():
         print(f"Error fetching network interface: {str(e)}")
     return interface
 
-
-@app.route('/')
-@login_required
-def serve_index():
-    return send_from_directory(app.static_folder, 'index.html')
-
 @app.route('/login', methods=['GET'])
 def login_page():
     return send_from_directory(app.static_folder, 'login.html')
 
+@app.route('/')
+@session_required
+def index():
+    return send_from_directory(app.static_folder, 'index.html')
+
 @app.route('/login', methods=['POST'])
 def login():
+    if 'logged_in' in session:
+        return redirect(url_for('index'))
+
     data = request.json
     username = data.get('username')
     password = data.get('password')
     
     if username == USERNAME and password == PASSWORD:
+        session.permanent = True
         session['logged_in'] = True
+        session['last_activity'] = datetime.now(timezone.utc)
+        return redirect(url_for('index'))
+        
         return jsonify({'status': 'Logged in successfully'}), 200
     return jsonify({'error': 'Invalid username or password'}), 401
 

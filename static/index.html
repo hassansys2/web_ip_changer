@@ -4,6 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Network and Time Configuration</title>
+    <script>
+        setTimeout(function() {
+            // Clear session (assuming logout clears the session)
+            fetch('/logout', { method: 'POST' })
+                .then(response => {
+                    // Redirect to login page or handle logout success
+                    window.location.replace('/login');
+                })
+                .catch(error => {
+                    console.error('Error logging out:', error);
+                });
+        }, 60000);
+    </script>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
